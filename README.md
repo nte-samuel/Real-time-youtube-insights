@@ -47,6 +47,117 @@ For this project, I used **Alex The Analyst’s YouTube channel**, one of my big
 Below is the Python code I wrote to collect, clean, and export YouTube channel data.
 
 
+# -------------------------------
+# 📊 YouTube Data Scraper 
+# -------------------------------
+# This script connects to YouTube’s API using your API key,
+# fetches all videos from a channel (like Figma’s),
+# and saves their details (title, views, likes, etc.) into a CSV file.
+
+from googleapiclient.discovery import build
+import pandas as pd
+
+# -------------------------------
+# 🔑 Step 1: Enter your API Key
+# -------------------------------
+api_key = "AIzaSyCo_S1DXWFyg8UTa2kRbIW6oimfgrFMlho"  # 👈 Paste your YouTube API key inside the quotes
+
+# -------------------------------
+# 📺 Step 2: Enter the Channel ID
+# -------------------------------
+# Example: Figma’s channel ID
+channel_id = "UCAB7sJntFKBTAkzE3n_HGzg"
+
+# -------------------------------
+# 🧰 Step 3: Create YouTube API client
+# -------------------------------
+youtube = build('youtube', 'v3', developerKey=api_key)
+
+# -------------------------------
+# 🔍 Step 4: Get basic channel info
+# -------------------------------
+channel_request = youtube.channels().list(
+    part='snippet,statistics,contentDetails',
+    id=channel_id
+)
+channel_response = channel_request.execute()
+
+channel_title = channel_response['items'][0]['snippet']['title']
+subscribers = channel_response['items'][0]['statistics'].get('subscriberCount', 0)
+views = channel_response['items'][0]['statistics'].get('viewCount', 0)
+video_count = channel_response['items'][0]['statistics'].get('videoCount', 0)
+
+print(f"📺 Channel: {channel_title}")
+print(f"👥 Subscribers: {subscribers}")
+print(f"👀 Total Views: {views}")
+print(f"🎬 Total Videos: {video_count}")
+
+# -------------------------------
+# 🎞 Step 5: Get all videos from the channel
+# -------------------------------
+video_ids = []
+next_page_token = None
+
+while True:
+    request = youtube.search().list(
+        part='id',
+        channelId=channel_id,
+        maxResults=50,
+        order='date',
+        pageToken=next_page_token
+    )
+    response = request.execute()
+
+    for item in response['items']:
+        if item['id']['kind'] == 'youtube#video':
+            video_ids.append(item['id']['videoId'])
+
+    next_page_token = response.get('nextPageToken')
+
+    if not next_page_token:
+        break
+
+print(f"✅ Total videos fetched: {len(video_ids)}")
+
+# -------------------------------
+# 📊 Step 6: Get stats for each video
+# -------------------------------
+videos_data = []
+
+for video_id in video_ids:
+    video_request = youtube.videos().list(
+        part='snippet,statistics,contentDetails',
+        id=video_id
+    )
+    video_response = video_request.execute()
+
+    for item in video_response['items']:
+        video_title = item['snippet']['title']
+        publish_date = item['snippet']['publishedAt']
+        views = item['statistics'].get('viewCount', 0)
+        likes = item['statistics'].get('likeCount', 0)
+        comments = item['statistics'].get('commentCount', 0)
+        duration = item['contentDetails']['duration']
+
+        videos_data.append({
+            'video_id': video_id,
+            'title': video_title,
+            'publish_date': publish_date,
+            'views': views,
+            'likes': likes,
+            'comments': comments,
+            'duration': duration
+        })
+
+# -------------------------------
+# 💾 Step 7: Save the data to a CSV file
+# -------------------------------
+df = pd.DataFrame(videos_data)
+df.to_csv('youtube_figma_data.csv', index=False)
+
+print("🎉 Done! Your data has been saved to youtube_figma_data.csv")
+  
+
 
 
 
